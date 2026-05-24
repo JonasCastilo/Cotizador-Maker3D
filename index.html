@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cotizador Pro - Maker 3D inc.</title>
+    <title>Cotizador Pro - Impresión 3D</title>
     
     <link rel="stylesheet" href="style.css">
 
@@ -14,7 +14,7 @@
 
     <div class="container">
         <div class="panel">
-            <h2>Maker 3D inc. - Calculadora</h2>
+            <h2>Calculadora de Cotización</h2>
             
             <div class="form-group">
                 <label for="calcName">Nombre de la Cotización / Cliente:</label>
@@ -110,31 +110,28 @@
                 <input type="number" id="paramMargin" value="40">
             </div>
 
-            <button onclick="saveParameters()" style="background-color: #10b981;">Guardar Parámetros</button>
-            <p id="saveMsg" style="color: #10b981; font-size: 0.85rem; text-align: center; display: none;">¡Parámetros actualizados localmente!</p>
+            <button onclick="saveParameters()" style="background-color: #10b981;">Guardar Parámetros localmente</button>
+            <p id="saveMsg" style="color: #10b981; font-size: 0.85rem; text-align: center; display: none;">¡Parámetros actualizados en tu navegador!</p>
         </div>
     </div>
 
     <script>
         const KW_PER_HOUR = 0.15;
         
-        // --- CONFIGURACIÓN DE FIREBASE ---
-        // Debes reemplazar estos datos con las credenciales de tu proyecto de Firebase Console
+        // --- CONFIGURACIÓN EXACTA DE TU FIREBASE ---
         const firebaseConfig = {
-            apiKey: "TU_API_KEY_AQUÍ",
-            authDomain: "TU_PROJECT_ID.firebaseapp.com",
-            projectId: "TU_PROJECT_ID_AQUÍ",
-            storageBucket: "TU_PROJECT_ID.appspot.com",
-            messagingSenderId: "TU_MESSAGING_ID",
-            appId: "TU_APP_ID"
+            apiKey: "AIzaSyCrPac87kkqxFPOEpP6mjuMGRyYvQujTAE",
+            authDomain: "cotizador-maker3d.firebaseapp.com",
+            projectId: "cotizador-maker3d",
+            storageBucket: "cotizador-maker3d.firebasestorage.app",
+            messagingSenderId: "170068828387",
+            appId: "1:170068828387:web:eb4c70ee17deb6c201a5d6",
+            measurementId: "G-KC83J3MZSG"
         };
 
-        // Inicializar Firebase de manera segura si las credenciales existen
-        let db = null;
-        if (firebaseConfig.apiKey !== "TU_API_KEY_AQUÍ") {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
-        }
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
         // Objeto global temporal para retener el último cálculo realizado
         let lastCalculation = null;
@@ -235,6 +232,9 @@
                 Depreciación: $${costDepreciation.toFixed(2)} | Mantenimiento: $${costMaint.toFixed(2)}<br>
                 Mano de obra: $${costLabor.toFixed(2)} | Tasa de Falla: $${costRisk.toFixed(2)}<br>
                 Preparación (Slicer): $${prepFee.toFixed(2)}`;
+                
+            // Ocultar mensaje de base de datos si se hace un nuevo cálculo
+            document.getElementById('dbMsg').style.display = 'none';
         }
 
         function saveQuoteToDatabase() {
@@ -246,26 +246,19 @@
                 return;
             }
 
-            if (!db) {
-                dbMsg.style.color = "#ef4444";
-                dbMsg.innerText = "Error: Configura tus credenciales de Firebase en el código.";
-                dbMsg.style.display = 'block';
-                return;
-            }
-
             // Añadir el nombre definido por el usuario al registro
             const quoteData = {
                 nombreCotizacion: nameField,
                 ...lastCalculation
             };
 
-            // Enviar los datos a una colección llamada "cotizaciones" en Firestore
+            // Enviar los datos a la colección "cotizaciones" en Firestore
             db.collection("cotizaciones").add(quoteData)
             .then(() => {
                 dbMsg.style.color = "#10b981";
                 dbMsg.innerText = "¡Cotización guardada exitosamente en la nube!";
                 dbMsg.style.display = 'block';
-                document.getElementById('calcName').value = ""; // Limpiar campo de nombre
+                document.getElementById('calcName').value = ""; 
             })
             .catch((error) => {
                 console.error("Error al guardar en Firebase: ", error);
