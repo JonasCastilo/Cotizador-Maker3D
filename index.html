@@ -164,7 +164,7 @@
                             <th style="padding: 10px;">Precio Neto</th>
                             <th style="padding: 10px;">Estado</th>
                             <th style="padding: 10px;">Fecha</th>
-                            <th style="padding: 10px; text-align: center;">Doc</th>
+                          <th style="padding: 10px; text-align: center;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="historyTableBody">
@@ -425,9 +425,35 @@
                                 </select>
                             </td>
                             <td style="padding: 12px; font-size: 0.8rem; color: #9ca3af;">${fStr}</td>
-                            <td style="padding: 12px; text-align: center;">
-                                <button onclick="generatePDF('${docId}')" style="background-color: transparent; border: 1px solid #4b5563; padding: 6px 12px;">📄</button>
-                            </td>
+                            <td style="padding: 12px; text-align: center; display:flex; gap:8px; justify-content:center;">
+
+    <button 
+        onclick="generatePDF('${docId}')"
+        style="
+            background-color: transparent;
+            border: 1px solid #4b5563;
+            padding: 6px 12px;
+            cursor:pointer;
+            border-radius:6px;
+        ">
+        📄
+    </button>
+
+    <button 
+        onclick="deleteQuote('${docId}', '${data.nombreCotizacion}')"
+        style="
+            background-color:#dc2626;
+            border:none;
+            color:white;
+            padding:6px 12px;
+            cursor:pointer;
+            border-radius:6px;
+            font-weight:bold;
+        ">
+        🗑️
+    </button>
+
+</td>
                         </tr>
                     `;
                     tbody.innerHTML += row;
@@ -447,6 +473,33 @@
             })
             .catch(() => showToast("Error al sincronizar estado", "error"));
         }
+        function deleteQuote(docId, projectName) {
+
+    const confirmDelete = confirm(
+        `¿Eliminar la cotización "${projectName}"?\n\nEsta acción NO se puede deshacer.`
+    );
+
+    if (!confirmDelete) return;
+
+    db.collection("cotizaciones").doc(docId).delete()
+
+    .then(() => {
+
+        showToast("Cotización eliminada correctamente", "success");
+
+        loadHistory();
+
+    })
+
+    .catch((error) => {
+
+        console.error(error);
+
+        showToast("Error al eliminar la cotización", "error");
+
+    });
+
+}
 
         function exportToExcel() {
             if (historyDataArray.length === 0) {
