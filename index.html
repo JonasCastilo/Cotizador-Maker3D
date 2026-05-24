@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cotizador Pro - Maker 3D inc.</title>
+    
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <div class="panel">
+            <h2>Maker 3D inc. - Calculadora</h2>
+            
+            <div class="form-group">
+                <label for="calcName">Nombre de la Cotización / Cliente:</label>
+                <input type="text" id="calcName" placeholder="Ej. Casco Iron Man - Cliente Carlos">
+            </div>
+
+            <div class="form-group">
+                <label for="calcGrams">Peso estimado del modelo (Gramos):</label>
+                <input type="number" id="calcGrams" placeholder="Ej. 95" step="0.1">
+            </div>
+
+            <div class="form-group">
+                <label for="calcHours">Tiempo de impresión (Horas totales):</label>
+                <input type="number" id="calcHours" placeholder="Ej. 2.5" step="0.1">
+            </div>
+
+            <div class="form-group">
+                <label for="calcColor">Tipo de impresión:</label>
+                <select id="calcColor">
+                    <option value="single">Un solo color</option>
+                    <option value="multi">A color (Multimaterial / Purgas)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="calcMaterial">Material a utilizar:</label>
+                <select id="calcMaterial">
+                    <option value="1.0">PLA (Estándar)</option>
+                    <option value="1.15">PETG (Mayor temperatura/desgaste)</option>
+                    <option value="1.25">ABS (Cámara cerrada/Difícil adhesión)</option>
+                </select>
+            </div>
+
+            <button onclick="calculateQuote()">Generar Cotización</button>
+
+            <div class="result-box" id="resultBox" style="display: none;">
+                <h3>Precio Sugerido</h3>
+                <p class="total-price" id="finalPrice">$0.00 MXN</p>
+                <p id="breakdown" style="font-size: 0.8rem; color: #9ca3af; margin-top: 15px; line-height: 1.5; text-align: left;"></p>
+                
+                <button onclick="saveQuoteToDatabase()" style="background-color: #3b82f6; margin-top: 20px;">
+                    Guardar Cotización en Base de Datos
+                </button>
+                <p id="dbMsg" style="font-size: 0.85rem; text-align: center; display: none; margin-top: 10px;"></p>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Parámetros Globales</h2>
+            
+            <div class="form-group">
+                <label for="paramFilament">Costo del Filamento ($ por Kg):</label>
+                <input type="number" id="paramFilament" value="500">
+            </div>
+
+            <div class="form-group">
+                <label for="paramLight">Costo de Luz ($ por kWh):</label>
+                <input type="number" id="paramLight" value="3.50" step="0.1"> 
+            </div>
+
+            <div class="form-group">
+                <label for="paramMaintenance">Mantenimiento ($ por Hora de uso):</label>
+                <input type="number" id="paramMaintenance" value="5.00">
+            </div>
+
+            <div class="form-group">
+                <label for="paramPrinterCost">Costo de la Impresora 3D ($ MXN):</label>
+                <input type="number" id="paramPrinterCost" value="7500">
+            </div>
+
+            <div class="form-group">
+                <label for="paramPrinterLife">Vida útil de la máquina (Horas):</label>
+                <input type="number" id="paramPrinterLife" value="5000">
+            </div>
+
+            <div class="form-group">
+                <label for="paramPrep">Tarifa Fija de Preparación/Slicer ($ MXN):</label>
+                <input type="number" id="paramPrep" value="35">
+            </div>
+
+            <div class="form-group">
+                <label for="paramLabor">Proceso Laborado (% sobre costo operativo):</label>
+                <input type="number" id="paramLabor" value="20">
+            </div>
+
+            <div class="form-group">
+                <label for="paramRisk">Tasa de Falla / Riesgo (%):</label>
+                <input type="number" id="paramRisk" value="10">
+            </div>
+
+            <div class="form-group">
+                <label for="paramMargin">Margen de Ganancia Neto (%):</label>
+                <input type="number" id="paramMargin" value="40">
+            </div>
+
+            <button onclick="saveParameters()" style="background-color: #10b981;">Guardar Parámetros</button>
+            <p id="saveMsg" style="color: #10b981; font-size: 0.85rem; text-align: center; display: none;">¡Parámetros actualizados localmente!</p>
+        </div>
+    </div>
+
+    <script>
+        const KW_PER_HOUR = 0.15;
+        
+        // --- CONFIGURACIÓN DE FIREBASE ---
+        // Debes reemplazar estos datos con las credenciales de tu proyecto de Firebase Console
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY_AQUÍ",
+            authDomain: "TU_PROJECT_ID.firebaseapp.com",
+            projectId: "TU_PROJECT_ID_AQUÍ",
+            storageBucket: "TU_PROJECT_ID.appspot.com",
+            messagingSenderId: "TU_MESSAGING_ID",
+            appId: "TU_APP_ID"
+        };
+
+        // Inicializar Firebase de manera segura si las credenciales existen
+        let db = null;
+        if (firebaseConfig.apiKey !== "TU_API_KEY_AQUÍ") {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+        }
+
+        // Objeto global temporal para retener el último cálculo realizado
+        let lastCalculation = null;
+
+        window.onload = function() {
+            loadParameters();
+        };
+
+        function saveParameters() {
+            const params = {
+                filament: document.getElementById('paramFilament').value,
+                light: document.getElementById('paramLight').value,
+                maintenance: document.getElementById('paramMaintenance').value,
+                printerCost: document.getElementById('paramPrinterCost').value,
+                printerLife: document.getElementById('paramPrinterLife').value,
+                prep: document.getElementById('paramPrep').value,
+                labor: document.getElementById('paramLabor').value,
+                risk: document.getElementById('paramRisk').value,
+                margin: document.getElementById('paramMargin').value
+            };
+            localStorage.setItem('3dCalcParamsPro', JSON.stringify(params));
+            const msg = document.getElementById('saveMsg');
+            msg.style.display = 'block';
+            setTimeout(() => msg.style.display = 'none', 3000);
+        }
+
+        function loadParameters() {
+            const saved = localStorage.getItem('3dCalcParamsPro');
+            if (saved) {
+                const params = JSON.parse(saved);
+                document.getElementById('paramFilament').value = params.filament;
+                document.getElementById('paramLight').value = params.light;
+                document.getElementById('paramMaintenance').value = params.maintenance;
+                document.getElementById('paramPrinterCost').value = params.printerCost;
+                document.getElementById('paramPrinterLife').value = params.printerLife;
+                document.getElementById('paramPrep').value = params.prep;
+                document.getElementById('paramLabor').value = params.labor;
+                document.getElementById('paramRisk').value = params.risk;
+                document.getElementById('paramMargin').value = params.margin;
+            }
+        }
+
+        function calculateQuote() {
+            let grams = parseFloat(document.getElementById('calcGrams').value);
+            const hours = parseFloat(document.getElementById('calcHours').value);
+            const colorType = document.getElementById('calcColor').value;
+            const materialMultiplier = parseFloat(document.getElementById('calcMaterial').value);
+
+            if (isNaN(grams) || isNaN(hours)) {
+                alert("Por favor ingresa los gramos y las horas.");
+                return;
+            }
+
+            const costPerKg = parseFloat(document.getElementById('paramFilament').value);
+            const costPerKwh = parseFloat(document.getElementById('paramLight').value);
+            const maintPerHour = parseFloat(document.getElementById('paramMaintenance').value);
+            const printerCost = parseFloat(document.getElementById('paramPrinterCost').value);
+            const printerLife = parseFloat(document.getElementById('paramPrinterLife').value);
+            const prepFee = parseFloat(document.getElementById('paramPrep').value);
+            const laborPct = parseFloat(document.getElementById('paramLabor').value) / 100;
+            const riskPct = parseFloat(document.getElementById('paramRisk').value) / 100;
+            const marginPct = parseFloat(document.getElementById('paramMargin').value) / 100;
+
+            let gramsFinales = grams;
+            if (colorType === 'multi') {
+                gramsFinales = grams * 1.8; 
+            }
+
+            const costFilament = (gramsFinales / 1000) * costPerKg;
+            const costElectricity = hours * KW_PER_HOUR * costPerKwh;
+            const costMaint = hours * maintPerHour;
+            const costDepreciation = hours * (printerCost / printerLife);
+            
+            let operationalCost = (costFilament + costElectricity + costMaint + costDepreciation) * materialMultiplier;
+            const costLabor = operationalCost * laborPct;
+            const costRisk = (operationalCost + costLabor) * riskPct;
+            const totalBase = operationalCost + costLabor + costRisk + prepFee;
+            const finalPrice = totalBase * (1 + marginPct);
+
+            // Almacenar el cálculo actual en la variable global
+            const selectMat = document.getElementById('calcMaterial');
+            lastCalculation = {
+                gramosOriginales: grams,
+                gramosConPurga: gramsFinales,
+                horas: hours,
+                tipoColor: colorType === 'multi' ? 'Multi-color' : 'Un solo color',
+                material: selectMat.options[selectMat.selectedIndex].text,
+                precioFinal: parseFloat(finalPrice.toFixed(2)),
+                fecha: new Date().toISOString()
+            };
+
+            document.getElementById('resultBox').style.display = 'block';
+            document.getElementById('finalPrice').innerText = `$${finalPrice.toFixed(2)} MXN`;
+            
+            document.getElementById('breakdown').innerHTML = 
+                `<strong>Desglose de costos sin margen:</strong><br>
+                Material: $${costFilament.toFixed(2)} | Luz: $${costElectricity.toFixed(2)}<br>
+                Depreciación: $${costDepreciation.toFixed(2)} | Mantenimiento: $${costMaint.toFixed(2)}<br>
+                Mano de obra: $${costLabor.toFixed(2)} | Tasa de Falla: $${costRisk.toFixed(2)}<br>
+                Preparación (Slicer): $${prepFee.toFixed(2)}`;
+        }
+
+        function saveQuoteToDatabase() {
+            const nameField = document.getElementById('calcName').value.trim();
+            const dbMsg = document.getElementById('dbMsg');
+
+            if (!nameField) {
+                alert("Por favor, asígnale un nombre a la cotización antes de guardarla.");
+                return;
+            }
+
+            if (!db) {
+                dbMsg.style.color = "#ef4444";
+                dbMsg.innerText = "Error: Configura tus credenciales de Firebase en el código.";
+                dbMsg.style.display = 'block';
+                return;
+            }
+
+            // Añadir el nombre definido por el usuario al registro
+            const quoteData = {
+                nombreCotizacion: nameField,
+                ...lastCalculation
+            };
+
+            // Enviar los datos a una colección llamada "cotizaciones" en Firestore
+            db.collection("cotizaciones").add(quoteData)
+            .then(() => {
+                dbMsg.style.color = "#10b981";
+                dbMsg.innerText = "¡Cotización guardada exitosamente en la nube!";
+                dbMsg.style.display = 'block';
+                document.getElementById('calcName').value = ""; // Limpiar campo de nombre
+            })
+            .catch((error) => {
+                console.error("Error al guardar en Firebase: ", error);
+                dbMsg.style.color = "#ef4444";
+                dbMsg.innerText = "Error de conexión con la base de datos.";
+                dbMsg.style.display = 'block';
+            });
+        }
+    </script>
+</body>
+</html>
