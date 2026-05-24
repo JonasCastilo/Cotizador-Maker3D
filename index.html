@@ -9,6 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -489,67 +490,419 @@
             showToast("Exportación a Excel completada", "success");
         }
 
-        function generatePDF(docId) {
-            const data = historyDataArray.find(item => item.id === docId);
-            if(!data) return;
+  function generatePDF(docId) {
 
-            const g = getGramosSeguro(data);
-            const fObj = new Date(data.fecha);
-            const element = document.createElement('div');
-            
-            element.innerHTML = `
-                <div style="padding: 50px; font-family: 'Helvetica Neue', sans-serif; color: #222; background: #fff;">
-                    <div style="border-bottom: 3px solid #3b82f6; padding-bottom: 15px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
-                        <div>
-                            <h1 style="color: #111827; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -1px;">Maker 3D inc.</h1>
-                            <p style="color: #6b7280; margin: 5px 0 0 0; font-size: 14px;">Ingeniería & Manufactura Aditiva</p>
-                        </div>
-                        <div style="text-align: right; color: #9ca3af; font-size: 12px;">Folio ID:<br>${docId.substring(0,8).toUpperCase()}</div>
-                    </div>
-                    
-                    <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; border-left: 5px solid #3b82f6; margin-bottom: 30px;">
-                        <h2 style="font-size: 18px; margin: 0 0 15px 0; color: #1f2937;">Orden de Trabajo / Cotización</h2>
-                        <table style="width: 100%; font-size: 14px;">
-                            <tr><td style="padding-bottom: 8px;"><strong>Producto/Proyecto:</strong></td><td>${data.nombreCotizacion}</td></tr>
-                            <tr><td><strong>Fecha:</strong></td><td>${fObj.toLocaleDateString('es-MX')} - ${fObj.toLocaleTimeString('es-MX')}</td></tr>
-                        </table>
-                    </div>
+    const data = historyDataArray.find(item => item.id === docId);
 
-                    <h3 style="font-size: 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; color: #374151;">Especificaciones Técnicas</h3>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px;">
-                        <tr><td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">Polímero Base:</td><td style="text-align: right; font-weight: bold;">${data.material || 'N/A'}</td></tr>
-                        <tr><td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">Perfil de Impresión:</td><td style="text-align: right;">${data.tipoColor || 'Estándar'}</td></tr>
-                        <tr><td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">Consumo Material Estimado:</td><td style="text-align: right;">${g}g</td></tr>
-                        <tr><td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">Tiempo de Ciclo (Máquina):</td><td style="text-align: right;">${data.horas || 0} horas</td></tr>
-                        <tr><td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">Servicios Adicionales:</td><td style="text-align: right; color: #4b5563;">${data.extras || 'Ninguno'}</td></tr>
-                        <tr><td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">Descuento Aplicado:</td><td style="text-align: right; color: #ef4444;">${data.descuentoPct || 0}%</td></tr>
-                    </table>
+    if (!data) {
+        showToast("No se encontró la cotización", "error");
+        return;
+    }
 
-                    <div style="margin-top: 40px; border: 2px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
-                        <div style="background: #f9fafb; padding: 15px 20px; text-align: right; border-bottom: 1px solid #e5e7eb;">
-                            <span style="font-size: 14px; color: #6b7280; text-transform: uppercase;">Monto Total Autorizado</span>
-                        </div>
-                        <div style="padding: 20px; text-align: right; background: #fff;">
-                            <span style="font-size: 32px; font-weight: bold; color: #10b981;">$${data.precioFinal || 0} <span style="font-size: 16px; color: #6b7280;">MXN</span></span>
-                        </div>
-                    </div>
+    const g = getGramosSeguro(data);
+    const fObj = new Date(data.fecha);
 
-                    <p style="text-align: justify; color: #9ca3af; font-size: 11px; margin-top: 50px; line-height: 1.5;">
-                        *Términos: Esta cotización cubre los costos operativos y de ingeniería descritos, incluyendo empaque y maniobras correspondientes. Las variaciones en tolerancias dimensionales son inherentes al proceso FDM.
-                    </p>
-                </div>
-            `;
+    const element = document.createElement('div');
 
-            html2pdf().set({
-                margin: 0,
-                filename: `Orden_${data.nombreCotizacion.replace(/\s+/g, '_')}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-            }).from(element).save();
-            
-            showToast("Descargando Recibo en PDF...");
+    element.style.width = "100%";
+    element.style.maxWidth = "700px";
+    element.style.padding = "30px";
+    element.style.background = "#ffffff";
+    element.style.color = "#111827";
+    element.style.fontFamily = "Arial, sans-serif";
+    element.style.boxSizing = "border-box";
+
+    element.innerHTML = `
+
+    <div style="
+        border-bottom:4px solid #3b82f6;
+        padding-bottom:20px;
+        margin-bottom:30px;
+    ">
+
+        <h1 style="
+            margin:0;
+            font-size:34px;
+            font-weight:bold;
+        ">
+            Maker 3D inc.
+        </h1>
+
+        <p style="
+            margin-top:5px;
+            color:#6b7280;
+            font-size:15px;
+        ">
+            Ingeniería & Manufactura Aditiva
+        </p>
+
+    </div>
+
+    <div style="
+        border:1px solid #d1d5db;
+        border-radius:10px;
+        padding:20px;
+        margin-bottom:30px;
+    ">
+
+        <table style="
+            width:100%;
+            border-collapse:collapse;
+            font-size:14px;
+        ">
+
+            <tr>
+                <td style="
+                    padding:8px 0;
+                    width:180px;
+                    font-weight:bold;
+                ">
+                    Folio:
+                </td>
+
+                <td>
+                    ${docId.substring(0,8).toUpperCase()}
+                </td>
+            </tr>
+
+            <tr>
+                <td style="
+                    padding:8px 0;
+                    font-weight:bold;
+                ">
+                    Proyecto:
+                </td>
+
+                <td style="word-break:break-word;">
+                    ${data.nombreCotizacion || "N/A"}
+                </td>
+            </tr>
+
+            <tr>
+                <td style="
+                    padding:8px 0;
+                    font-weight:bold;
+                ">
+                    Fecha:
+                </td>
+
+                <td>
+                    ${fObj.toLocaleDateString('es-MX')}
+                    ${fObj.toLocaleTimeString('es-MX')}
+                </td>
+            </tr>
+
+            <tr>
+                <td style="
+                    padding:8px 0;
+                    font-weight:bold;
+                ">
+                    Estado:
+                </td>
+
+                <td>
+                    ${data.estado || "Pendiente"}
+                </td>
+            </tr>
+
+        </table>
+
+    </div>
+
+    <h2 style="
+        color:#2563eb;
+        border-bottom:2px solid #d1d5db;
+        padding-bottom:8px;
+        margin-bottom:15px;
+    ">
+        Especificaciones Técnicas
+    </h2>
+
+    <table style="
+        width:100%;
+        border-collapse:collapse;
+        margin-bottom:35px;
+        table-layout:fixed;
+        word-wrap:break-word;
+        font-size:13px;
+    ">
+
+        <tr>
+
+            <td style="
+                border:1px solid #d1d5db;
+                padding:12px;
+                width:50%;
+                background:#f9fafb;
+                font-weight:bold;
+            ">
+                Material
+            </td>
+
+            <td style="
+                border:1px solid #d1d5db;
+                padding:12px;
+                text-align:right;
+            ">
+                ${data.material || "N/A"}
+            </td>
+
+        </tr>
+
+        <tr>
+
+            <td style="
+                border:1px solid #d1d5db;
+                padding:12px;
+                background:#f9fafb;
+                font-weight:bold;
+            ">
+                Perfil de impresión
+            </td>
+
+            <td style="
+                border:1px solid #d1d5db;
+                padding:12px;
+                text-align:right;
+            ">
+                ${data.tipoColor || "N/A"}
+            </td>
+
+        </tr>
+
+        <tr>
+
+            <td style="
+                border:1px solid #d1d5db;
+                padding:12px;
+                background:#f9fafb;
+                font-weight:bold;
+            ">
+                Material utilizado
+            </td>
+
+            <td style="
+                border:1px solid #d1d5db;
+                padding:12px;
+                text-align:right;
+            ">
+                ${g} g
+            </td>
+
+        </tr>
+
+        <tr>
+
+            <td style="
+                border:1px solid #d1d5db;
+                padding:12px;
+                background:#f9fafb;
+                font-weight:bold;
+            ">
+                Tiempo estimado
+            </td>
+
+            <td style="
+                border:1px solid #d1d5db;
+                padding:12px;
+                text-align:right;
+            ">
+                ${data.horas || 0} h
+            </td>
+
+        </tr>
+
+        <tr>
+
+            <td style="
+                border:1px solid #d1d5db;
+                padding:12px;
+                background:#f9fafb;
+                font-weight:bold;
+            ">
+                Servicios adicionales
+            </td>
+
+            <td style="
+                border:1px solid #d1d5db;
+                padding:12px;
+                text-align:right;
+            ">
+                ${data.extras || "Ninguno"}
+            </td>
+
+        </tr>
+
+    </table>
+
+    <div style="
+        margin-top:35px;
+        border:1px solid #d1d5db;
+        border-radius:10px;
+        overflow:hidden;
+    ">
+
+        <div style="
+            background:#f9fafb;
+            padding:14px 20px;
+            font-weight:bold;
+            color:#2563eb;
+            font-size:18px;
+        ">
+            Resumen de Cotización
+        </div>
+
+        <table style="
+            width:100%;
+            border-collapse:collapse;
+            font-size:14px;
+        ">
+
+            <tr>
+
+                <td style="
+                    padding:14px;
+                    border-bottom:1px solid #e5e7eb;
+                ">
+                    Servicios incluidos
+                </td>
+
+                <td style="
+                    padding:14px;
+                    border-bottom:1px solid #e5e7eb;
+                    text-align:right;
+                ">
+                    ${data.extras || "Impresión estándar"}
+                </td>
+
+            </tr>
+
+            <tr>
+
+                <td style="
+                    padding:14px;
+                    border-bottom:1px solid #e5e7eb;
+                ">
+                    Descuento aplicado
+                </td>
+
+                <td style="
+                    padding:14px;
+                    border-bottom:1px solid #e5e7eb;
+                    text-align:right;
+                    color:#dc2626;
+                ">
+                    ${data.descuentoPct || 0}%
+                </td>
+
+            </tr>
+
+            <tr>
+
+                <td style="
+                    padding:18px 14px;
+                    font-size:18px;
+                    font-weight:bold;
+                ">
+                    Total final
+                </td>
+
+                <td style="
+                    padding:18px 14px;
+                    text-align:right;
+                    font-size:30px;
+                    font-weight:bold;
+                    color:#10b981;
+                    word-break:break-word;
+                ">
+                    $${(data.precioFinal || 0).toFixed(2)} MXN
+                </td>
+
+            </tr>
+
+        </table>
+
+    </div>
+
+    <div style="
+        margin-top:40px;
+        padding:20px;
+        background:#f9fafb;
+        border-left:4px solid #3b82f6;
+        border-radius:8px;
+    ">
+
+        <h3 style="
+            margin-top:0;
+            color:#2563eb;
+            font-size:16px;
+        ">
+            Notas importantes
+        </h3>
+
+        <p style="
+            margin:0;
+            font-size:12px;
+            color:#6b7280;
+            line-height:1.6;
+            text-align:justify;
+        ">
+            Esta cotización incluye costos de operación,
+            materiales, energía, depreciación de equipo,
+            mano de obra y servicios adicionales especificados.
+            Las variaciones dimensionales son inherentes al
+            proceso de manufactura aditiva FDM.
+        </p>
+
+    </div>
+
+    <div style="
+        margin-top:45px;
+        text-align:center;
+        font-size:12px;
+        color:#9ca3af;
+    ">
+
+        Gracias por confiar en Maker 3D inc.
+
+    </div>
+    `;
+
+    const opt = {
+
+        margin: 0.2,
+
+        filename:
+            `Cotizacion_${(data.nombreCotizacion || "Proyecto")
+            .replace(/[^a-zA-Z0-9]/g, "_")}.pdf`,
+
+        image: {
+            type: 'jpeg',
+            quality: 1
+        },
+
+        html2canvas: {
+            scale: 2,
+            useCORS: true,
+            scrollX: 0,
+            scrollY: 0
+        },
+
+        jsPDF: {
+            unit: 'in',
+            format: 'letter',
+            orientation: 'portrait'
         }
+
+    };
+
+    html2pdf()
+        .set(opt)
+        .from(element)
+        .save();
+
+    showToast("PDF generado correctamente");
+}
     </script>
 </body>
 </html>
