@@ -1,111 +1,108 @@
- :root {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --primary: #3b82f6;
-            --primary-hover: #2563eb;
-            --text: #f3f4f6;
-            --border: #374151;
-        }
 
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
+        :root { 
+            --bg-color: #121212; 
+            --card-bg: #1e1e1e; 
+            --primary: #3b82f6; 
+            --primary-hover: #2563eb; 
+            --text: #f3f4f6; 
+            --border: #374151; 
         }
+        
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text); 
+            margin: 0; 
+            padding: 20px; 
+            display: flex; 
+            justify-content: center; 
+        }
+        
+        .container { 
+            max-width: 900px; 
+            width: 100%; 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 20px; 
+        }
+        
+        @media (max-width: 768px) { 
+            .container { grid-template-columns: 1fr; } 
+        }
+        
+        .panel { 
+            background-color: var(--card-bg); 
+            padding: 25px; 
+            border-radius: 12px; 
+            border: 1px solid var(--border); 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
+        }
+        
+        h2 { 
+            margin-top: 0; 
+            font-size: 1.25rem; 
+            border-bottom: 2px solid var(--border); 
+            padding-bottom: 10px; 
+        }
+        
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #9ca3af; }
+        
+        input, select { 
+            width: 100%; 
+            padding: 10px; 
+            background-color: var(--bg-color); 
+            border: 1px solid var(--border); 
+            color: var(--text); 
+            border-radius: 6px; 
+            box-sizing: border-box; 
+        }
+        
+        input:focus, select:focus { outline: none; border-color: var(--primary); }
+        
+        button { 
+            width: 100%; 
+            padding: 12px; 
+            background-color: var(--primary); 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            font-size: 1rem; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: 0.2s; 
+            margin-top: 10px; 
+        }
+        
+        button:hover { opacity: 0.9; }
+        
+        .result-box { 
+            margin-top: 20px; 
+            padding: 15px; 
+            background-color: rgba(59, 130, 246, 0.1); 
+            border: 1px solid var(--primary); 
+            border-radius: 6px; 
+            text-align: center; 
+        }
+        
+        .total-price { font-size: 2rem; font-weight: bold; margin: 0; color: #10b981; }
 
-        .container {
-            max-width: 800px;
-            width: 100%;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
+        .checkbox-group label { display: flex; align-items: center; gap: 10px; color: #d1d5db; margin-bottom: 8px; cursor: pointer; font-size: 0.9rem; }
+        .checkbox-group input[type="checkbox"] { width: 18px; height: 18px; accent-color: #3b82f6; cursor: pointer; }
+        
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: #1f2937; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #374151; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .stat-card h3 { margin: 0 0 10px 0; font-size: 0.9rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-card p { margin: 0; font-size: 1.8rem; color: #3b82f6; font-weight: bold; }
+        .stat-card .unit { font-size: 1rem; color: #6b7280; font-weight: normal; }
 
-        @media (max-width: 600px) {
-            .container {
-                grid-template-columns: 1fr;
-            }
-        }
+        .status-select { background: #374151; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; outline: none;}
+        .status-select.pendiente { border-left: 4px solid #f59e0b; }
+        .status-select.imprimiendo { border-left: 4px solid #3b82f6; }
+        .status-select.entregado { border-left: 4px solid #10b981; }
 
-        .panel {
-            background-color: var(--card-bg);
-            padding: 25px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-
-        h2 {
-            margin-top: 0;
-            font-size: 1.25rem;
-            border-bottom: 2px solid var(--border);
-            padding-bottom: 10px;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 0.9rem;
-            color: #9ca3af;
-        }
-
-        input, select {
-            width: 100%;
-            padding: 10px;
-            background-color: var(--bg-color);
-            border: 1px solid var(--border);
-            color: var(--text);
-            border-radius: 6px;
-            box-sizing: border-box;
-        }
-
-        input:focus, select:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            margin-top: 10px;
-        }
-
-        button:hover {
-            background-color: var(--primary-hover);
-        }
-
-        .result-box {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: rgba(59, 130, 246, 0.1);
-            border: 1px solid var(--primary);
-            border-radius: 6px;
-            text-align: center;
-        }
-
-        .result-box h3 {
-            margin: 0 0 10px 0;
-            color: var(--primary);
-        }
-
-        .total-price {
-            font-size: 2rem;
-            font-weight: bold;
-            margin: 0;
-        }
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: #1f2937; color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5); border-left: 5px solid #3b82f6; font-size: 0.9rem; opacity: 0; transform: translateX(100%); transition: all 0.3s ease; }
+        .toast.show { opacity: 1; transform: translateX(0); }
+        .toast.success { border-color: #10b981; }
+        .toast.error { border-color: #ef4444; }

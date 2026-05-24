@@ -3,122 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cotizador Pro - Impresión 3D</title>
+    <title>Maker 3D inc. - ERP System</title>
     
-    <link rel="stylesheet" href="style.css">
-
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+    <div id="toast-container"></div>
+
     <div class="container">
         <div class="panel">
-            <h2>Calculadora de Cotización</h2>
+            <h2>Maker 3D inc. - Terminal de Cotización</h2>
             
             <div class="form-group">
-                <label for="calcName">Nombre de la Cotización / Cliente:</label>
-                <input type="text" id="calcName" placeholder="Ej. Casco Iron Man - Cliente Carlos">
+                <label for="calcName">Identificador del Proyecto / Producto:</label>
+                <input type="text" id="calcName" placeholder="Ej. Engranaje Planetario v2 - Nemak">
             </div>
 
-            <div class="form-group">
-                <label for="calcGrams">Peso estimado del modelo (Gramos):</label>
-                <input type="number" id="calcGrams" placeholder="Ej. 95" step="0.1">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group">
+                    <label for="calcGrams">Peso (Gramos):</label>
+                    <input type="number" id="calcGrams" placeholder="Ej. 120" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label for="calcHours">Tiempo (Horas):</label>
+                    <input type="number" id="calcHours" placeholder="Ej. 4.5" step="0.1">
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="calcHours">Tiempo de impresión (Horas totales):</label>
-                <input type="number" id="calcHours" placeholder="Ej. 2.5" step="0.1">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group">
+                    <label for="calcColor">Perfil de Impresión:</label>
+                    <select id="calcColor">
+                        <option value="single">Monocromático</option>
+                        <option value="multi">Multi-color (AMS/Torre)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="calcMaterial">Material a utilizar:</label>
+                    <select id="calcMaterial">
+                        <option value="1.0">PLA / PLA+</option>
+                        <option value="1.15">PETG / TPU</option>
+                        <option value="1.25">ABS / ASA / Carbon Fiber</option>
+                    </select>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="calcColor">Tipo de impresión:</label>
-                <select id="calcColor">
-                    <option value="single">Un solo color</option>
-                    <option value="multi">A color (Multimaterial / Purgas)</option>
-                </select>
+            <div class="form-group checkbox-group" style="margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                <label style="color: white; font-weight: bold; margin-bottom: 10px;">Servicios de Ingeniería Extras:</label>
+                <label><input type="checkbox" id="extraCAD"> Diseño / Modif. CAD (+ $<span id="lblCAD">250</span> MXN)</label>
+                <label><input type="checkbox" id="extraAssm"> Ensamblaje Electromecánico (+ $<span id="lblAssm">150</span> MXN)</label>
+                <label><input type="checkbox" id="extraPost"> Post-proceso estético (+ <span id="lblPost">30</span>% del costo)</label>
             </div>
 
-            <div class="form-group">
-                <label for="calcMaterial">Material a utilizar:</label>
-                <select id="calcMaterial">
-                    <option value="1.0">PLA (Estándar)</option>
-                    <option value="1.15">PETG (Mayor temperatura/desgaste)</option>
-                    <option value="1.25">ABS (Cámara cerrada/Difícil adhesión)</option>
-                </select>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+                <div class="form-group">
+                    <label for="calcEmpaque" style="color:#10b981;">Costo Empaque / Envío ($):</label>
+                    <input type="number" id="calcEmpaque" placeholder="Ej. 50" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="calcDescuento" style="color:#ef4444;">Descuento al cliente (%):</label>
+                    <input type="number" id="calcDescuento" placeholder="Ej. 10" value="0">
+                </div>
             </div>
 
-            <button onclick="calculateQuote()">Generar Cotización</button>
+            <button onclick="calculateQuote()" style="margin-top: 15px;">Procesar Cotización</button>
 
             <div class="result-box" id="resultBox" style="display: none;">
-                <h3>Precio Sugerido</h3>
+                <h3>Precio Final Estimado</h3>
                 <p class="total-price" id="finalPrice">$0.00 MXN</p>
-                <p id="breakdown" style="font-size: 0.8rem; color: #9ca3af; margin-top: 15px; line-height: 1.5; text-align: left;"></p>
+                <p id="breakdown" style="font-size: 0.85rem; color: #9ca3af; margin-top: 15px; line-height: 1.6; text-align: left; background: #111827; padding: 12px; border-radius: 6px;"></p>
                 
-                <button onclick="saveQuoteToDatabase()" style="background-color: #3b82f6; margin-top: 20px;">
-                    Guardar Cotización en Base de Datos
+                <button onclick="saveQuoteToDatabase()" style="background-color: #10b981; margin-top: 20px;">
+                    Guardar y Registrar Pedido
                 </button>
-                <p id="dbMsg" style="font-size: 0.85rem; text-align: center; display: none; margin-top: 10px;"></p>
             </div>
         </div>
 
         <div class="panel">
-            <h2>Parámetros Globales</h2>
+            <h2>Configuración del Sistema</h2>
             
-            <div class="form-group">
-                <label for="paramFilament">Costo del Filamento ($ por Kg):</label>
-                <input type="number" id="paramFilament" value="500">
+            <h3 style="font-size: 0.9rem; color: #3b82f6; border-bottom: 1px solid #374151; padding-bottom: 5px;">Hardware y Material</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group"><label>Filamento ($/Kg):</label><input type="number" id="paramFilament" value="450"></div>
+                <div class="form-group"><label>Tarifa Luz ($/kWh):</label><input type="number" id="paramLight" value="3.50" step="0.1"></div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group"><label>Valor Impresora ($):</label><input type="number" id="paramPrinterCost" value="7500"></div>
+                <div class="form-group"><label>Vida Útil (Horas):</label><input type="number" id="paramPrinterLife" value="6000"></div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group"><label>Mantenimiento ($/h):</label><input type="number" id="paramMaintenance" value="3.00"></div>
+                <div class="form-group"><label>Setup Laminador ($):</label><input type="number" id="paramPrep" value="40"></div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group"><label>Costo Operativo (%):</label><input type="number" id="paramLabor" value="25"></div>
+                <div class="form-group"><label>Tasa de Falla (%):</label><input type="number" id="paramRisk" value="10"></div>
             </div>
 
-            <div class="form-group">
-                <label for="paramLight">Costo de Luz ($ por kWh):</label>
-                <input type="number" id="paramLight" value="3.50" step="0.1"> 
+            <h3 style="font-size: 0.9rem; color: #10b981; border-bottom: 1px solid #374151; padding-bottom: 5px; margin-top: 15px;">Servicios Extra</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group"><label>Tarifa Diseño CAD ($):</label><input type="number" id="paramCostCAD" value="250"></div>
+                <div class="form-group"><label>Tarifa Ensamblaje ($):</label><input type="number" id="paramCostAssm" value="150"></div>
+                <div class="form-group" style="grid-column: 1 / -1;"><label>Recargo Post-proceso (%):</label><input type="number" id="paramPctPost" value="30"></div>
             </div>
 
+            <h3 style="font-size: 0.9rem; color: #f59e0b; border-bottom: 1px solid #374151; padding-bottom: 5px; margin-top: 15px;">Finanzas</h3>
             <div class="form-group">
-                <label for="paramMaintenance">Mantenimiento ($ por Hora de uso):</label>
-                <input type="number" id="paramMaintenance" value="5.00">
+                <label style="color: #f59e0b; font-weight: bold;">Margen de Ganancia Neto (%):</label>
+                <input type="number" id="paramMargin" value="45" style="border: 1px solid #f59e0b;">
             </div>
 
-            <div class="form-group">
-                <label for="paramPrinterCost">Costo de la Impresora 3D ($ MXN):</label>
-                <input type="number" id="paramPrinterCost" value="7500">
+            <button onclick="saveParameters()" style="background-color: #374151; margin-top: 20px;">Guardar Configuración</button>
+        </div>
+
+        <div id="securityPanel" class="panel" style="grid-column: 1 / -1; text-align: center; padding: 50px 20px;">
+            <h2>Centro de Mando Maker 3D inc.</h2>
+            <p style="font-size: 0.9rem; color: #9ca3af; margin-bottom: 20px;">Acceso restringido a datos financieros.</p>
+            <input type="password" id="pinInput" placeholder="PIN de Administrador" style="width: 250px; display: inline-block; margin-bottom: 15px; text-align: center; font-size: 1.2rem; letter-spacing: 5px;">
+            <br>
+            <button onclick="checkPin()" style="width: 250px; padding: 12px;">Desbloquear ERP</button>
+        </div>
+
+        <div id="historyPanel" class="panel" style="grid-column: 1 / -1; display: none;">
+            
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <h3>Ingresos Proyectados</h3>
+                    <p id="statRevenue">$0 <span class="unit">MXN</span></p>
+                </div>
+                <div class="stat-card">
+                    <h3>Material Procesado</h3>
+                    <p id="statGrams">0 <span class="unit">Kg</span></p>
+                </div>
+                <div class="stat-card">
+                    <h3>Horas de Máquina</h3>
+                    <p id="statHours">0 <span class="unit">h</span></p>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="paramPrinterLife">Vida útil de la máquina (Horas):</label>
-                <input type="number" id="paramPrinterLife" value="5000">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #374151; padding-bottom: 10px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                <h2 style="margin: 0; border: none; padding: 0;">Registro de Operaciones</h2>
+                <div>
+                    <button onclick="exportToExcel()" style="background-color: #10b981; width: auto; padding: 6px 15px; font-size: 0.8rem; margin-right: 10px;">📊 Exportar a Excel</button>
+                    <button onclick="loadHistory()" style="background-color: #4b5563; width: auto; padding: 6px 15px; font-size: 0.8rem;">↻ Sincronizar</button>
+                </div>
             </div>
-
-            <div class="form-group">
-                <label for="paramPrep">Tarifa Fija de Preparación/Slicer ($ MXN):</label>
-                <input type="number" id="paramPrep" value="35">
+            
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; text-align: left; border-collapse: collapse; min-width: 800px;">
+                    <thead>
+                        <tr style="color: #9ca3af; font-size: 0.85rem; text-transform: uppercase;">
+                            <th style="padding: 10px;">Producto</th>
+                            <th style="padding: 10px;">Detalles Físicos</th>
+                            <th style="padding: 10px;">Precio Neto</th>
+                            <th style="padding: 10px;">Estado</th>
+                            <th style="padding: 10px;">Fecha</th>
+                            <th style="padding: 10px; text-align: center;">Doc</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <tr><td colspan="6" style="text-align:center; padding:30px; color: #9ca3af;">Iniciando conexión segura con Firebase...</td></tr>
+                    </tbody>
+                </table>
             </div>
-
-            <div class="form-group">
-                <label for="paramLabor">Proceso Laborado (% sobre costo operativo):</label>
-                <input type="number" id="paramLabor" value="20">
-            </div>
-
-            <div class="form-group">
-                <label for="paramRisk">Tasa de Falla / Riesgo (%):</label>
-                <input type="number" id="paramRisk" value="10">
-            </div>
-
-            <div class="form-group">
-                <label for="paramMargin">Margen de Ganancia Neto (%):</label>
-                <input type="number" id="paramMargin" value="40">
-            </div>
-
-            <button onclick="saveParameters()" style="background-color: #10b981;">Guardar Parámetros localmente</button>
-            <p id="saveMsg" style="color: #10b981; font-size: 0.85rem; text-align: center; display: none;">¡Parámetros actualizados en tu navegador!</p>
         </div>
     </div>
 
     <script>
-        const KW_PER_HOUR = 0.15;
-        
-        // --- CONFIGURACIÓN EXACTA DE TU FIREBASE ---
+        const KW_PER_HOUR = 0.20; 
+        const SECRET_PIN = "122026"; 
+
         const firebaseConfig = {
             apiKey: "AIzaSyCrPac87kkqxFPOEpP6mjuMGRyYvQujTAE",
             authDomain: "cotizador-maker3d.firebaseapp.com",
@@ -129,16 +188,44 @@
             measurementId: "G-KC83J3MZSG"
         };
 
-        // Inicializar Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-
-        // Objeto global temporal para retener el último cálculo realizado
+        
         let lastCalculation = null;
+        let historyDataArray = []; 
 
-        window.onload = function() {
-            loadParameters();
-        };
+        window.onload = function() { loadParameters(); };
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerText = message;
+            container.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        function checkPin() {
+            if(document.getElementById('pinInput').value === SECRET_PIN) {
+                document.getElementById('securityPanel').style.display = 'none';
+                document.getElementById('historyPanel').style.display = 'block';
+                loadHistory(); 
+                showToast("Acceso concedido al sistema ERP", "success");
+            } else {
+                showToast("PIN de Administrador Incorrecto", "error");
+            }
+        }
+
+        function updateDynamicLabels() {
+            document.getElementById('lblCAD').innerText = document.getElementById('paramCostCAD').value || 0;
+            document.getElementById('lblAssm').innerText = document.getElementById('paramCostAssm').value || 0;
+            document.getElementById('lblPost').innerText = document.getElementById('paramPctPost').value || 0;
+        }
 
         function saveParameters() {
             const params = {
@@ -150,28 +237,34 @@
                 prep: document.getElementById('paramPrep').value,
                 labor: document.getElementById('paramLabor').value,
                 risk: document.getElementById('paramRisk').value,
-                margin: document.getElementById('paramMargin').value
+                margin: document.getElementById('paramMargin').value,
+                costCAD: document.getElementById('paramCostCAD').value,
+                costAssm: document.getElementById('paramCostAssm').value,
+                pctPost: document.getElementById('paramPctPost').value
             };
             localStorage.setItem('3dCalcParamsPro', JSON.stringify(params));
-            const msg = document.getElementById('saveMsg');
-            msg.style.display = 'block';
-            setTimeout(() => msg.style.display = 'none', 3000);
+            updateDynamicLabels();
+            showToast("Configuración general guardada");
         }
 
         function loadParameters() {
             const saved = localStorage.getItem('3dCalcParamsPro');
             if (saved) {
-                const params = JSON.parse(saved);
-                document.getElementById('paramFilament').value = params.filament;
-                document.getElementById('paramLight').value = params.light;
-                document.getElementById('paramMaintenance').value = params.maintenance;
-                document.getElementById('paramPrinterCost').value = params.printerCost;
-                document.getElementById('paramPrinterLife').value = params.printerLife;
-                document.getElementById('paramPrep').value = params.prep;
-                document.getElementById('paramLabor').value = params.labor;
-                document.getElementById('paramRisk').value = params.risk;
-                document.getElementById('paramMargin').value = params.margin;
+                const p = JSON.parse(saved);
+                document.getElementById('paramFilament').value = p.filament || 450;
+                document.getElementById('paramLight').value = p.light || 3.50;
+                document.getElementById('paramMaintenance').value = p.maintenance || 3;
+                document.getElementById('paramPrinterCost').value = p.printerCost || 7500;
+                document.getElementById('paramPrinterLife').value = p.printerLife || 6000;
+                document.getElementById('paramPrep').value = p.prep || 40;
+                document.getElementById('paramLabor').value = p.labor || 25;
+                document.getElementById('paramRisk').value = p.risk || 10;
+                document.getElementById('paramMargin').value = p.margin || 45;
+                document.getElementById('paramCostCAD').value = p.costCAD || 250;
+                document.getElementById('paramCostAssm').value = p.costAssm || 150;
+                document.getElementById('paramPctPost').value = p.pctPost || 30;
             }
+            updateDynamicLabels();
         }
 
         function calculateQuote() {
@@ -180,92 +273,282 @@
             const colorType = document.getElementById('calcColor').value;
             const materialMultiplier = parseFloat(document.getElementById('calcMaterial').value);
 
+            const empaque = parseFloat(document.getElementById('calcEmpaque').value) || 0;
+            const descuentoPct = parseFloat(document.getElementById('calcDescuento').value) / 100 || 0;
+
             if (isNaN(grams) || isNaN(hours)) {
-                alert("Por favor ingresa los gramos y las horas.");
-                return;
+                showToast("Faltan datos de gramos u horas", "error"); return;
             }
 
-            const costPerKg = parseFloat(document.getElementById('paramFilament').value);
-            const costPerKwh = parseFloat(document.getElementById('paramLight').value);
-            const maintPerHour = parseFloat(document.getElementById('paramMaintenance').value);
-            const printerCost = parseFloat(document.getElementById('paramPrinterCost').value);
-            const printerLife = parseFloat(document.getElementById('paramPrinterLife').value);
-            const prepFee = parseFloat(document.getElementById('paramPrep').value);
-            const laborPct = parseFloat(document.getElementById('paramLabor').value) / 100;
-            const riskPct = parseFloat(document.getElementById('paramRisk').value) / 100;
-            const marginPct = parseFloat(document.getElementById('paramMargin').value) / 100;
-
-            let gramsFinales = grams;
-            if (colorType === 'multi') {
-                gramsFinales = grams * 1.8; 
-            }
-
-            const costFilament = (gramsFinales / 1000) * costPerKg;
-            const costElectricity = hours * KW_PER_HOUR * costPerKwh;
-            const costMaint = hours * maintPerHour;
-            const costDepreciation = hours * (printerCost / printerLife);
+            const p_fil = parseFloat(document.getElementById('paramFilament').value);
+            const p_kwh = parseFloat(document.getElementById('paramLight').value);
+            const p_mnt = parseFloat(document.getElementById('paramMaintenance').value);
+            const p_cst = parseFloat(document.getElementById('paramPrinterCost').value);
+            const p_lif = parseFloat(document.getElementById('paramPrinterLife').value);
+            const p_prp = parseFloat(document.getElementById('paramPrep').value);
+            const p_lab = parseFloat(document.getElementById('paramLabor').value) / 100;
+            const p_rsk = parseFloat(document.getElementById('paramRisk').value) / 100;
+            const p_mrg = parseFloat(document.getElementById('paramMargin').value) / 100;
             
-            let operationalCost = (costFilament + costElectricity + costMaint + costDepreciation) * materialMultiplier;
-            const costLabor = operationalCost * laborPct;
-            const costRisk = (operationalCost + costLabor) * riskPct;
-            const totalBase = operationalCost + costLabor + costRisk + prepFee;
-            const finalPrice = totalBase * (1 + marginPct);
+            const p_cad = parseFloat(document.getElementById('paramCostCAD').value) || 0;
+            const p_assm = parseFloat(document.getElementById('paramCostAssm').value) || 0;
+            const p_postPct = parseFloat(document.getElementById('paramPctPost').value) / 100 || 0;
 
-            // Almacenar el cálculo actual en la variable global
-            const selectMat = document.getElementById('calcMaterial');
+            let gramsFinales = colorType === 'multi' ? grams * 1.8 : grams;
+
+            const costoXGramo = p_fil / 1000;
+            const costFil = gramsFinales * costoXGramo;
+            
+            const costElec = hours * KW_PER_HOUR * p_kwh;
+            const costMnt = hours * p_mnt;
+            const costDep = hours * (p_cst / p_lif);
+            const costoTiempo = costElec + costMnt + costDep; 
+            const costoXHora = costoTiempo / hours;
+            
+            let opCost = (costFil + costoTiempo) * materialMultiplier;
+            const costLab = opCost * p_lab;
+            const costRsk = (opCost + costLab) * p_rsk;
+            
+            let extraCost = 0;
+            let extrasList = [];
+            if(document.getElementById('extraCAD').checked) { extraCost += p_cad; extrasList.push("Diseño CAD"); }
+            if(document.getElementById('extraAssm').checked) { extraCost += p_assm; extrasList.push("Ensamblaje"); }
+            
+            let costoManoDeObra = costLab + p_prp + costRsk; 
+            let subtotalOperativo = opCost + costoManoDeObra + extraCost;
+            
+            if(document.getElementById('extraPost').checked) { 
+                const recargoPost = subtotalOperativo * p_postPct;
+                subtotalOperativo += recargoPost; 
+                extrasList.push("Post-proceso"); 
+            }
+
+            const subtotal = subtotalOperativo + empaque;
+            const precioConGanancia = subtotal * (1 + p_mrg);
+            const finalPrice = precioConGanancia * (1 - descuentoPct);
+
             lastCalculation = {
                 gramosOriginales: grams,
-                gramosConPurga: gramsFinales,
+                gramos: parseFloat(gramsFinales.toFixed(1)),
+                costoXGramo: parseFloat(costoXGramo.toFixed(2)),
+                costoFilamento: parseFloat(costFil.toFixed(2)),
                 horas: hours,
-                tipoColor: colorType === 'multi' ? 'Multi-color' : 'Un solo color',
-                material: selectMat.options[selectMat.selectedIndex].text,
+                costoXHora: parseFloat(costoXHora.toFixed(2)),
+                costoTiempo: parseFloat(costoTiempo.toFixed(2)),
+                costoDiseno: parseFloat(extraCost.toFixed(2)),
+                manoDeObra: parseFloat(costoManoDeObra.toFixed(2)),
+                empaque: empaque,
+                subtotal: parseFloat(subtotal.toFixed(2)),
+                gananciaPct: p_mrg * 100,
+                precioConGanancia: parseFloat(precioConGanancia.toFixed(2)),
+                descuentoPct: descuentoPct * 100,
                 precioFinal: parseFloat(finalPrice.toFixed(2)),
+
+                tipoColor: colorType === 'multi' ? 'Multi-color' : 'Monocromático',
+                material: document.getElementById('calcMaterial').options[document.getElementById('calcMaterial').selectedIndex].text,
+                extras: extrasList.join(", ") || "Ninguno",
+                estado: "Pendiente",
                 fecha: new Date().toISOString()
             };
 
             document.getElementById('resultBox').style.display = 'block';
             document.getElementById('finalPrice').innerText = `$${finalPrice.toFixed(2)} MXN`;
-            
             document.getElementById('breakdown').innerHTML = 
-                `<strong>Desglose de costos sin margen:</strong><br>
-                Material: $${costFilament.toFixed(2)} | Luz: $${costElectricity.toFixed(2)}<br>
-                Depreciación: $${costDepreciation.toFixed(2)} | Mantenimiento: $${costMaint.toFixed(2)}<br>
-                Mano de obra: $${costLabor.toFixed(2)} | Tasa de Falla: $${costRisk.toFixed(2)}<br>
-                Preparación (Slicer): $${prepFee.toFixed(2)}`;
-                
-            // Ocultar mensaje de base de datos si se hace un nuevo cálculo
-            document.getElementById('dbMsg').style.display = 'none';
+                `📌 <strong>Subtotal Operativo:</strong> $${subtotal.toFixed(2)}<br>
+                 📦 <strong>Empaque incluido:</strong> $${empaque.toFixed(2)} | 📉 <strong>Descuento:</strong> ${lastCalculation.descuentoPct}%<br>
+                 <span style="color:#10b981; font-weight:bold; margin-top:5px; display:block;">Ganancia Neta Calculada: $${(precioConGanancia - subtotal).toFixed(2)} MXN</span>`;
         }
 
         function saveQuoteToDatabase() {
             const nameField = document.getElementById('calcName').value.trim();
-            const dbMsg = document.getElementById('dbMsg');
+            if (!nameField) { showToast("Ingresa el identificador del producto", "error"); return; }
 
-            if (!nameField) {
-                alert("Por favor, asígnale un nombre a la cotización antes de guardarla.");
-                return;
-            }
+            const quoteData = { nombreCotizacion: nameField, ...lastCalculation };
 
-            // Añadir el nombre definido por el usuario al registro
-            const quoteData = {
-                nombreCotizacion: nameField,
-                ...lastCalculation
-            };
-
-            // Enviar los datos a la colección "cotizaciones" en Firestore
             db.collection("cotizaciones").add(quoteData)
             .then(() => {
-                dbMsg.style.color = "#10b981";
-                dbMsg.innerText = "¡Cotización guardada exitosamente en la nube!";
-                dbMsg.style.display = 'block';
+                showToast("Producto registrado exitosamente");
                 document.getElementById('calcName').value = ""; 
+                if(document.getElementById('historyPanel').style.display === 'block') loadHistory(); 
             })
-            .catch((error) => {
-                console.error("Error al guardar en Firebase: ", error);
-                dbMsg.style.color = "#ef4444";
-                dbMsg.innerText = "Error de conexión con la base de datos.";
-                dbMsg.style.display = 'block';
+            .catch(() => showToast("Fallo de conexión con el servidor", "error"));
+        }
+
+        function getGramosSeguro(data) {
+            return parseFloat(data.gramos) || parseFloat(data.gramosConPurga) || parseFloat(data.gramosOriginales) || 0;
+        }
+
+        function loadHistory() {
+            const tbody = document.getElementById('historyTableBody');
+            
+            db.collection("cotizaciones").orderBy("fecha", "desc").get()
+            .then((querySnapshot) => {
+                tbody.innerHTML = ''; 
+                historyDataArray = []; 
+                let totalGanancias = 0, totalGramos = 0, totalHoras = 0;
+
+                if (querySnapshot.empty) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">Sin registros en la base de datos.</td></tr>';
+                    return;
+                }
+                
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const docId = doc.id; 
+                    historyDataArray.push({ id: docId, ...data }); 
+
+                    const g = getGramosSeguro(data);
+
+                    totalGanancias += (parseFloat(data.precioFinal) || 0);
+                    totalGramos += g;
+                    totalHoras += (parseFloat(data.horas) || 0);
+
+                    const fObj = new Date(data.fecha);
+                    const fStr = `${fObj.toLocaleDateString('es-MX')} ${fObj.toLocaleTimeString('es-MX', {hour: '2-digit', minute:'2-digit'})}`;
+                    
+                    const sPend = data.estado === 'Pendiente' ? 'selected' : '';
+                    const sImpr = data.estado === 'Imprimiendo' ? 'selected' : '';
+                    const sEntr = data.estado === 'Entregado' ? 'selected' : '';
+                    const colorCls = data.estado ? data.estado.toLowerCase() : 'pendiente';
+
+                    const row = `
+                        <tr style="border-bottom: 1px solid #374151; transition: background 0.2s;">
+                            <td style="padding: 12px;"><strong>${data.nombreCotizacion}</strong><br><span style="font-size: 0.75rem; color: #9ca3af;">${data.tipoColor || 'Estándar'}</span></td>
+                            <td style="padding: 12px; font-size: 0.85rem; color: #d1d5db;">${data.material || 'N/A'}<br>⚖️ ${g}g | ⏱️ ${data.horas || 0}h</td>
+                            <td style="padding: 12px; color: #10b981; font-weight: bold; font-size: 1.1rem;">$${data.precioFinal || 0}</td>
+                            <td style="padding: 12px;">
+                                <select class="status-select ${colorCls}" onchange="updateStatus('${docId}', this.value, this)">
+                                    <option value="Pendiente" ${sPend}>⏳ Pendiente</option>
+                                    <option value="Imprimiendo" ${sImpr}>🔄 Imprimiendo</option>
+                                    <option value="Entregado" ${sEntr}>✅ Entregado</option>
+                                </select>
+                            </td>
+                            <td style="padding: 12px; font-size: 0.8rem; color: #9ca3af;">${fStr}</td>
+                            <td style="padding: 12px; text-align: center;">
+                                <button onclick="generatePDF('${docId}')" style="background-color: transparent; border: 1px solid #4b5563; padding: 6px 12px;">📄</button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+
+                document.getElementById('statRevenue').innerHTML = `$${totalGanancias.toLocaleString('es-MX', {minimumFractionDigits: 2})} <span class="unit">MXN</span>`;
+                document.getElementById('statGrams').innerHTML = `${(totalGramos/1000).toFixed(2)} <span class="unit">Kg</span>`;
+                document.getElementById('statHours').innerHTML = `${totalHoras.toFixed(1)} <span class="unit">h</span>`;
             });
+        }
+
+        function updateStatus(docId, newStatus, selectElement) {
+            db.collection("cotizaciones").doc(docId).update({ estado: newStatus })
+            .then(() => {
+                selectElement.className = `status-select ${newStatus.toLowerCase()}`;
+                showToast(`Estado actualizado a: ${newStatus}`);
+            })
+            .catch(() => showToast("Error al sincronizar estado", "error"));
+        }
+
+        function exportToExcel() {
+            if (historyDataArray.length === 0) {
+                showToast("No hay datos para exportar", "error"); return;
+            }
+
+            let csvContent = "\uFEFF"; 
+            csvContent += "Producto,Material,Gramos,Costo x gramo,Costo Filamento,Horas Impresion,Costo x Hora,Costo Tiempo,Costo Diseño / Extras,Mano de Obra,Empaque,Subtotal,Ganancia %,Precio con Ganancia,Descuento %,Precio Final,Estado,Fecha de Cotizacion\n";
+
+            historyDataArray.forEach(row => {
+                let fObj = new Date(row.fecha);
+                let fecha = fObj.toLocaleDateString('es-MX') + ' ' + fObj.toLocaleTimeString('es-MX');
+
+                let g = getGramosSeguro(row);
+                let empaque = row.empaque || 0;
+                let descPct = row.descuentoPct || 0;
+                let cDiseno = row.costoDiseno || 0;
+                let mObra = row.manoDeObra || 0;
+                let subT = row.subtotal || 0;
+                let cXHr = row.costoXHora || 0;
+                let cTie = row.costoTiempo || 0;
+                let gPct = row.gananciaPct || 0;
+                let pCGan = row.precioConGanancia || row.precioFinal || 0;
+                let cFil = row.costoFilamento || 0;
+                let cXg = row.costoXGramo || 0;
+
+                let line = `"${row.nombreCotizacion}","${row.material || 'N/A'}",${g},${cXg},${cFil},${row.horas || 0},${cXHr},${cTie},${cDiseno},${mObra},${empaque},${subT},"${gPct}%",${pCGan},"${descPct}%",${row.precioFinal || 0},"${row.estado || 'Pendiente'}","${fecha}"`;
+                csvContent += line + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "Historial_Maker3D.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast("Exportación a Excel completada", "success");
+        }
+
+        function generatePDF(docId) {
+            const data = historyDataArray.find(item => item.id === docId);
+            if(!data) return;
+
+            const g = getGramosSeguro(data);
+            const fObj = new Date(data.fecha);
+            const element = document.createElement('div');
+            
+            element.innerHTML = `
+                <div style="padding: 50px; font-family: 'Helvetica Neue', sans-serif; color: #222; background: #fff;">
+                    <div style="border-bottom: 3px solid #3b82f6; padding-bottom: 15px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div>
+                            <h1 style="color: #111827; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -1px;">Maker 3D inc.</h1>
+                            <p style="color: #6b7280; margin: 5px 0 0 0; font-size: 14px;">Ingeniería & Manufactura Aditiva</p>
+                        </div>
+                        <div style="text-align: right; color: #9ca3af; font-size: 12px;">Folio ID:<br>${docId.substring(0,8).toUpperCase()}</div>
+                    </div>
+                    
+                    <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; border-left: 5px solid #3b82f6; margin-bottom: 30px;">
+                        <h2 style="font-size: 18px; margin: 0 0 15px 0; color: #1f2937;">Orden de Trabajo / Cotización</h2>
+                        <table style="width: 100%; font-size: 14px;">
+                            <tr><td style="padding-bottom: 8px;"><strong>Producto/Proyecto:</strong></td><td>${data.nombreCotizacion}</td></tr>
+                            <tr><td><strong>Fecha:</strong></td><td>${fObj.toLocaleDateString('es-MX')} - ${fObj.toLocaleTimeString('es-MX')}</td></tr>
+                        </table>
+                    </div>
+
+                    <h3 style="font-size: 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; color: #374151;">Especificaciones Técnicas</h3>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px;">
+                        <tr><td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">Polímero Base:</td><td style="text-align: right; font-weight: bold;">${data.material || 'N/A'}</td></tr>
+                        <tr><td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">Perfil de Impresión:</td><td style="text-align: right;">${data.tipoColor || 'Estándar'}</td></tr>
+                        <tr><td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">Consumo Material Estimado:</td><td style="text-align: right;">${g}g</td></tr>
+                        <tr><td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">Tiempo de Ciclo (Máquina):</td><td style="text-align: right;">${data.horas || 0} horas</td></tr>
+                        <tr><td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">Servicios Adicionales:</td><td style="text-align: right; color: #4b5563;">${data.extras || 'Ninguno'}</td></tr>
+                        <tr><td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">Descuento Aplicado:</td><td style="text-align: right; color: #ef4444;">${data.descuentoPct || 0}%</td></tr>
+                    </table>
+
+                    <div style="margin-top: 40px; border: 2px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                        <div style="background: #f9fafb; padding: 15px 20px; text-align: right; border-bottom: 1px solid #e5e7eb;">
+                            <span style="font-size: 14px; color: #6b7280; text-transform: uppercase;">Monto Total Autorizado</span>
+                        </div>
+                        <div style="padding: 20px; text-align: right; background: #fff;">
+                            <span style="font-size: 32px; font-weight: bold; color: #10b981;">$${data.precioFinal || 0} <span style="font-size: 16px; color: #6b7280;">MXN</span></span>
+                        </div>
+                    </div>
+
+                    <p style="text-align: justify; color: #9ca3af; font-size: 11px; margin-top: 50px; line-height: 1.5;">
+                        *Términos: Esta cotización cubre los costos operativos y de ingeniería descritos, incluyendo empaque y maniobras correspondientes. Las variaciones en tolerancias dimensionales son inherentes al proceso FDM.
+                    </p>
+                </div>
+            `;
+
+            html2pdf().set({
+                margin: 0,
+                filename: `Orden_${data.nombreCotizacion.replace(/\s+/g, '_')}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            }).from(element).save();
+            
+            showToast("Descargando Recibo en PDF...");
         }
     </script>
 </body>
